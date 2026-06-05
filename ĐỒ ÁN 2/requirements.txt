@@ -1,0 +1,6 @@
+feedparser
+googlenewsdecoder
+requests
+selectolax
+google-genai
+pandas
