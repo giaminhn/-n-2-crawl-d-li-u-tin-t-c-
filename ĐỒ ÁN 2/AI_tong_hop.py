@@ -1,25 +1,24 @@
 import json
+import os
 import random
 import time
 from google import genai
 from google.genai import types
 
-# 1. Danh sách các API Key của bạn
-API_KEYS = [
-    "AQ.Ab8RN6IcOFA7dUwzFzrxf6FXJYw4qsWYedGIeCgBBreyLxHDIg",
-    "AQ.Ab8RN6KrY-dPLSCRBzwfHqIpNxKn0-DwDRezb9bEytWuKfId1Q",
-    "AQ.Ab8RN6JD8Cikx6TfyJLlroNhWZNAd6NcAwLd7tbSTIRWdmvkbw",
-    # Bạn có thể thêm các key dự phòng khác vào đây
-]
+# 1. Đọc danh sách API Key an toàn từ biến môi trường của hệ thống
+API_KEYS_RAW = os.environ.get("GEMINI_API_KEYS", "")
+# Tách các key bằng dấu phẩy và loại bỏ khoảng trắng thừa
+API_KEYS = [k.strip() for k in API_KEYS_RAW.split(",") if k.strip()]
 
 
 def analyze_article(title, text):
-    """Sử dụng Gemini 2.5 Flash để tóm tắt và phân tích bài báo.
-
-    Tự động xoay vòng và thử lại với Key khác nếu dính lỗi (429, 403, rỗng...).
-    Trả về None nếu TẤT CẢ các key đều thất bại.
-    """
+    """Sử dụng Gemini 2.5 Flash để tóm tắt và phân tích bài báo."""
     if not text.strip():
+        return None
+
+    # Nếu không tìm thấy key nào cấu hình trong môi trường hệ thống
+    if not API_KEYS:
+        print("      [❌] LỖI: Không tìm thấy API Key nào trong biến môi trường GEMINI_API_KEYS.")
         return None
 
     prompt = f"""
@@ -37,20 +36,12 @@ def analyze_article(title, text):
     5. "event_type": Loại sự kiện của tin tức này, chọn một trong các nhóm: "Kết quả kinh doanh", "Giá cả thị trường", "Chính sách - Vĩ mô", "Đầu tư - Dự án", "Tin tức doanh nghiệp", "Khác".
     """
 
-    # Tạo bản sao và xáo trộn ngẫu nhiên danh sách key để phân phối đều tải tải
     shuffled_keys = API_KEYS.copy()
     random.shuffle(shuffled_keys)
 
-    # Duyệt qua từng key để thử
     for current_key in shuffled_keys:
-        # Loại bỏ các phần tử trống vô tình lọt vào danh sách
-        if not current_key or not current_key.strip():
-            continue
-
         try:
-            # Khởi tạo client với key hiện tại
             client = genai.Client(api_key=current_key)
-
             response = client.models.generate_content(
                 model="gemini-2.5-flash",
                 contents=prompt,
@@ -58,22 +49,12 @@ def analyze_article(title, text):
                     response_mime_type="application/json"
                 ),
             )
-
-            # Nếu thành công, parse JSON và trả về kết quả chuẩn
-            analysis_data = json.loads(response.text)
-            return analysis_data
+            return json.loads(response.text)
 
         except Exception as e:
             error_msg = str(e)
-            # In cảnh báo lỗi ngắn gọn kèm 8 ký tự cuối của key lỗi để bạn tiện tracking
-            print(
-                f"      [!] Key [...{current_key[-8:]}] gặp lỗi: {error_msg[:80]}... Đang tự động đổi sang key khác..."
-            )
-
-            # Nếu dính hạn mức tốc độ (429), cho hệ thống nghỉ 1 giây trước khi đổi sang key tiếp theo
+            print(f"      [!] Key [...{current_key[-8:]}] gặp lỗi: {error_msg[:60]}... Đang tự động đổi key...")
             if "429" in error_msg or "RESOURCE_EXHAUSTED" in error_msg:
                 time.sleep(1)
             continue
-
-    # Nếu chạy hết cả danh sách key mà không key nào hoạt động thành công
     return None
