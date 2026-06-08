@@ -9,7 +9,7 @@ from thu_thap_tin_tuc import get_news
 
 
 def generate_news_id(url):
-    """Tạo mã băm MD5 duy nhất từ URL bài viết"""
+    """Tạo mã MD5 duy nhất từ URL bài viết"""
     return hashlib.md5(url.encode("utf-8")).hexdigest()[:12].upper()
 
 
@@ -17,8 +17,8 @@ def main_job():
     """Hàm lõi thực hiện toàn bộ tiến trình cào và phân tích tin tức"""
     # 1. Định nghĩa DANH SÁCH MÃ CỔ PHIẾU cần quét theo yêu cầu
     tickers_list = [
-        "HPG", "HSG", "NKG", "VGS",  # Thép
-        "DGC", "DPM", "DCM", "CSV", "LAS", "BFC",  # Hóa chất - Phân bón
+        "HPG", "HSG", "NKG",  # Thép
+        "DGC", "DPM", "DCM",  # Hóa chất - Phân bón
         "BMP", "NTP",  # Nhựa
         "HT1", "BCC",  # Xi măng
         "GVR", "DPR"   # Cao su
